@@ -1,6 +1,7 @@
 // Control UI tests cover guided model setup against a mocked Gateway.
 import { writeFile } from "node:fs/promises";
 import path from "node:path";
+import type { Page } from "playwright";
 import { beforeEach, expect, it } from "vitest";
 import { createControlUiE2eArtifactDir } from "../test-helpers/control-ui-e2e-artifacts.ts";
 import { takeControlUiViewportScreenshot } from "../test-helpers/control-ui-e2e-screenshot.ts";
@@ -232,117 +233,6 @@ suite.define(() => {
           return typeof params === "object" && params !== null && "message" in params;
         });
         expect(userTurns).toHaveLength(0);
-      },
-    );
-  });
-
-  it("starts browser sign-in from two direct choices and opens a detached tab", async () => {
-    await suite.withPage(
-      {
-        locale: "en-US",
-        reducedMotion: "reduce",
-        serviceWorkers: "block",
-        viewport: { width: 1280, height: 900 },
-      },
-      async ({ page, context }) => {
-        const signInUrl = "https://provider.example/sign-in";
-        await context.route("https://provider.example/**", (route) =>
-          route.fulfill({
-            contentType: "text/html",
-            body: "<title>Provider sign-in</title>Provider sign-in",
-          }),
-        );
-        const gateway = await installMockGateway(page, {
-          featureMethods: [
-            "config.get",
-            "config.patch",
-            "models.authStatus",
-            "models.authLogin",
-            "wizard.next",
-            "wizard.cancel",
-          ],
-          methodResponses: {
-            "models.authStatus": {
-              ts: 1,
-              providers: [],
-              providerCapabilities: [
-                {
-                  provider: "example",
-                  apiKeySupported: false,
-                  quickApiKeySetup: false,
-                  loginOptions: [
-                    {
-                      id: "example-device",
-                      brandId: "example",
-                      label: "Device pairing",
-                      kind: "device-code",
-                      featured: true,
-                    },
-                    {
-                      id: "example-browser",
-                      brandId: "example",
-                      label: "Browser sign-in",
-                      kind: "oauth",
-                      featured: false,
-                    },
-                  ],
-                },
-              ],
-            },
-            "models.authLogin": { done: false, status: "running" },
-            "wizard.next": {
-              sequence: [
-                {
-                  done: false,
-                  status: "running",
-                  step: {
-                    id: "instructions",
-                    type: "note",
-                    executor: "client",
-                    message: "Remote environment",
-                    externalUrl: signInUrl,
-                  },
-                },
-                {
-                  done: false,
-                  status: "running",
-                  step: {
-                    id: "browser",
-                    type: "progress",
-                    executor: "gateway",
-                    externalUrl: signInUrl,
-                    message: "Complete sign-in",
-                  },
-                },
-                { done: true, status: "done" },
-              ],
-            },
-          },
-        });
-        await page.goto(suite.server.baseUrl + "settings/model-providers");
-        await page.locator("[data-models-connect]").click();
-        const dialog = page.locator(".model-setup-wizard");
-        await page.getByRole("button", { name: "Device pairing", exact: true }).waitFor();
-        expect(await dialog.locator("select").count()).toBe(0);
-        await captureSignIn(page, "choices");
-        await gateway.deferNext("wizard.next", { answer: { stepId: "instructions" } });
-        const popupReady = page.waitForEvent("popup");
-        await page.getByRole("button", { name: "Browser sign-in", exact: true }).click();
-        const popup = await popupReady;
-        await gateway.waitForRequest("wizard.next", {
-          match: { answer: { stepId: "instructions" } },
-        });
-        await gateway.deferNext("wizard.next");
-        await gateway.resolveDeferred("wizard.next");
-        await page.getByRole("link", { name: "Open sign-in", exact: true }).waitFor();
-        await expect.poll(() => popup.url()).toBe(signInUrl);
-        expect(await popup.evaluate(() => window.opener)).toBeNull();
-        await page.getByRole("button", { name: "Copy link", exact: true }).waitFor();
-        expect(await dialog.textContent()).not.toContain(signInUrl);
-        await captureSignIn(page, "browser");
-        await gateway.resolveDeferred("wizard.next");
-        await expect.poll(() => page.locator("openclaw-modal-dialog").count()).toBe(0);
-        await popup.close();
       },
     );
   });

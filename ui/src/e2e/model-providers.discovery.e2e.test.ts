@@ -162,15 +162,16 @@ suite.define(() => {
         await page.goto(`${suite.server.baseUrl}settings/model-providers?connect=1`);
         await page.locator("[data-models-login-discover]").click();
         await page.locator('[data-unavailable-candidate="expired-account"] button').click();
-        await expect
-          .poll(() => page.locator("[data-models-login-choice]").inputValue())
-          .toBe(choice.id);
+        const method = page
+          .locator("[data-models-login-choice]")
+          .getByRole("button", { name: choice.label, exact: true });
+        await method.waitFor();
         expect(await page.locator(".model-provider-login__provider").textContent()).toContain(
           "Account brand",
         );
         expect(await page.locator(".model-setup-discovery").count()).toBe(0);
         expect(await gateway.getRequests("models.authLogin")).toHaveLength(0);
-        await page.locator("[data-models-login-start]").click();
+        await method.click();
         expect((await gateway.waitForRequest("models.authLogin")).params).toMatchObject({
           authChoice: choice.id,
           agentId: "main",

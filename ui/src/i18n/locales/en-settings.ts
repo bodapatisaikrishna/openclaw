@@ -333,7 +333,6 @@ const enSettings = {
       action: "Connect provider",
       title: "Connect a provider",
       method: "Connection method",
-      selectMethod: "Choose a connection method",
       searchProviders: "Search providers…",
       noMatches: "No providers match your search.",
       noProviders: "No providers are available to connect.",

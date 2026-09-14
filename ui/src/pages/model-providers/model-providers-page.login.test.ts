@@ -290,16 +290,7 @@ describe("Models provider login", () => {
       );
       const page = appendPage(context);
       try {
-        await waitForFast(() =>
-          expect(page.querySelector<HTMLButtonElement>("[data-models-connect]")?.disabled).toBe(
-            false,
-          ),
-        );
-        page.querySelector<HTMLButtonElement>("[data-models-connect]")!.click();
-        await page.updateComplete;
-        [...page.querySelectorAll<HTMLButtonElement>("openclaw-modal-dialog button")]
-          .find((button) => button.textContent?.includes("Example browser sign-in"))!
-          .click();
+        await chooseLogin(page, "example-browser");
         await waitForFast(() =>
           expect(page.querySelector<HTMLAnchorElement>(".wizard-step__sign-in a")?.href).toBe(
             "https://provider.example/sign-in",

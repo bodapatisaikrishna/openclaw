@@ -37,7 +37,6 @@ export class ModelProviderLoginController implements ReactiveController {
   private picker: {
     providers?: string[];
     providerId: string;
-    choice: string;
     query: string;
   } | null = null;
   private readonly searchInput = createRef<HTMLInputElement>();
@@ -178,9 +177,6 @@ export class ModelProviderLoginController implements ReactiveController {
     this.picker = {
       providers,
       providerId: provider?.id ?? "",
-      choice:
-        provider?.choices.find((option) => option.id === authChoice)?.id ??
-        (provider?.choices.length === 1 ? provider.choices[0]!.id : ""),
       query: "",
     };
     // The modal owns initial focus and its original trigger. Only in-dialog
@@ -255,7 +251,6 @@ export class ModelProviderLoginController implements ReactiveController {
                       <div data-models-login-choice tabindex="-1" ${ref(this.methodChoices)}>
                         ${renderWizardSingleChoice({
                           label: t("modelProviders.login.method"),
-                          value: picker.choice,
                           options: provider.choices.map((option) => ({
                             value: option.id,
                             label: option.label,
@@ -340,8 +335,6 @@ export class ModelProviderLoginController implements ReactiveController {
                                     return;
                                   }
                                   picker.providerId = group.id;
-                                  picker.choice =
-                                    group.choices.length === 1 ? group.choices[0]!.id : "";
                                   this.focusPicker = "method";
                                   this.host.requestUpdate();
                                 }}
@@ -385,7 +378,6 @@ export class ModelProviderLoginController implements ReactiveController {
                         @click=${() => {
                           picker.providers = undefined;
                           picker.providerId = "";
-                          picker.choice = "";
                           this.focusPicker = "search";
                           this.host.requestUpdate();
                         }}

@@ -54,6 +54,14 @@ export { resumeFirstRunActivation } from "./first-run-activation-receipt.ts";
 type Candidate = SystemAgentSetupDetectResult["candidates"][number];
 
 export class ModelSetupPage extends OpenClawLightDomElement {
+  private readonly actionsDisabled = (): boolean =>
+    this.activationState.phase === "testing" ||
+    this.verifyState.phase === "checking" ||
+    this.wizardMutationActive ||
+    (this.wizardState.phase !== "idle" &&
+      this.wizardState.phase !== "error" &&
+      this.wizardState.phase !== "cancelled");
+
   @consume({ context: applicationContext, subscribe: true })
   private context!: ApplicationContext;
 
@@ -631,17 +639,6 @@ export class ModelSetupPage extends OpenClawLightDomElement {
         });
       }
     }
-  }
-
-  private actionsDisabled(): boolean {
-    return (
-      this.activationState.phase === "testing" ||
-      this.verifyState.phase === "checking" ||
-      this.wizardMutationActive ||
-      (this.wizardState.phase !== "idle" &&
-        this.wizardState.phase !== "error" &&
-        this.wizardState.phase !== "cancelled")
-    );
   }
 
   override render() {
