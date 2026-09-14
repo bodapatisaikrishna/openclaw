@@ -2,6 +2,7 @@
 export const databaseWorkerCoreTestFiles = [
   "src/claws/provenance-runtime-read.async.test.ts",
   "src/projects/project-registry.test.ts",
+  "src/commands/doctor-project-clone-shape.test.ts",
   "src/auto-reply/reply/commands-plugins.install.test.ts",
   "src/auto-reply/reply/commands-plugins.install-clawhub-spec.test.ts",
   "src/system-agent/setup-inference-credentials.lifecycle.test.ts",

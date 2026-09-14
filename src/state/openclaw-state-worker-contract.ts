@@ -10,7 +10,10 @@ import type { PreparedSqliteAuditRecord } from "../infra/sqlite-audit-record.ker
 import type { SqliteFileGeneration } from "../infra/sqlite-file-generation.js";
 import type { PluginMetadataStateSelector } from "../plugins/installed-plugin-index-row.js";
 import type { TaskFlowView } from "../plugins/runtime/task-domain-types.js";
-import type { ProjectRegistryIdentity } from "../projects/project-registry.kernel.js";
+import type {
+  ProjectRegistryIdentity,
+  ProjectRegistryRecord,
+} from "../projects/project-registry.kernel.js";
 import type { ManagedTaskInFlowInput } from "../tasks/task-flow-managed-run-task.kernel.js";
 import type { RunTaskInFlowResult } from "../tasks/task-flow-managed-run-task.types.js";
 import type {
@@ -49,6 +52,7 @@ export type OpenClawStateWorkerOperations = UserPreferenceWorkerOperations &
   CronStoreWorkerOperations &
   SessionDeliveryWorkerOperations & {
     "projects.findRoot": { input: { repoRoot: string }; output: string | undefined };
+    "projects.list": { input: undefined; output: ProjectRegistryRecord[] };
     "projects.remove": {
       input: { project: ProjectRegistryIdentity; lease: OpenClawStateLeaseIdentity };
       output: boolean;
