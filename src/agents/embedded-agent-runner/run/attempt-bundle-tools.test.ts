@@ -1,3 +1,4 @@
+import { expectDefined } from "@openclaw/normalization-core";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createDeferred } from "../../../../test/helpers/promise.js";
 import {
@@ -17,6 +18,8 @@ import {
   clearToolSearchCatalog,
   createToolSearchCatalogRef,
 } from "../../tool-search-catalog.js";
+import { resolveToolSearchConfig } from "../../tool-search-config.js";
+import { ToolSearchRuntime } from "../../tool-search-runtime.js";
 
 const mocks = vi.hoisted(() => ({
   createBundleLspToolRuntime: vi.fn(),
@@ -109,8 +112,8 @@ describe("prepareEmbeddedAttemptBundleTools", () => {
   ])(
     "tracks one bundled execution lifecycle ($cataloged, failure=$fail)",
     async ({ cataloged, fail }) => {
-      const started = createDeferred<void>();
-      const finish = createDeferred<void>();
+      const started = createDeferred();
+      const finish = createDeferred();
       const tool = createStubTool("silent__delayed_local");
       const result = { content: [{ type: "text" as const, text: "delayed result" }], details: {} };
       tool.execute = async () => {
@@ -121,7 +124,7 @@ describe("prepareEmbeddedAttemptBundleTools", () => {
         }
         return result;
       };
-      setPluginToolMeta(tool, { pluginId: "bundle-mcp" });
+      setPluginToolMeta(tool, { pluginId: "bundle-mcp", optional: false });
       mocks.acquireSessionMcpRuntime.mockResolvedValue({ runtime: {}, releaseLease: () => {} });
       mocks.materializeBundleMcpToolsForRun.mockResolvedValue({ tools: [tool] });
       const events: DiagnosticEventPayload[] = [];
@@ -146,25 +149,33 @@ describe("prepareEmbeddedAttemptBundleTools", () => {
           toolHookContext: input.preparedToolBase.toolHookContext,
           isVisibleControlTool: (candidate) => candidate.name === "tool_search",
         });
-        const executable = cataloged
-          ? catalogRef.current?.entries[0]?.tool
-          : surface.tools.find((candidate) => candidate.name === tool.name);
-        if (!executable) {
-          throw new Error("Expected the bundled tool on the selected surface");
-        }
-        const execution = executable.execute("delayed-call", {}, undefined, undefined);
+        const execution = cataloged
+          ? new ToolSearchRuntime(
+              { ...input.preparedToolBase.toolHookContext, catalogRef },
+              resolveToolSearchConfig(),
+            )
+              .call(tool.name, {}, { parentToolCallId: "delayed-call" })
+              .then((response) => response.result)
+          : expectDefined(
+              surface.tools.find((candidate) => candidate.name === tool.name),
+              "direct bundled tool",
+            ).execute("delayed-call", {}, undefined, undefined);
         const settled = fail
           ? expect(execution).rejects.toThrow("transport failed")
           : expect(execution).resolves.toEqual(result);
         await started.promise;
         try {
-          await new Promise<void>((resolve) => setImmediate(resolve));
+          await new Promise<void>((resolve) => {
+            setImmediate(resolve);
+          });
           expect(events.map((event) => event.type)).toEqual(["tool.execution.started"]);
         } finally {
           finish.resolve();
           await settled;
         }
-        await new Promise<void>((resolve) => setImmediate(resolve));
+        await new Promise<void>((resolve) => {
+          setImmediate(resolve);
+        });
         expect(events.map((event) => event.type)).toEqual([
           "tool.execution.started",
           fail ? "tool.execution.error" : "tool.execution.completed",
@@ -174,7 +185,9 @@ describe("prepareEmbeddedAttemptBundleTools", () => {
             runId: "run",
             sessionId: "session",
             sessionKey: "session-key",
-            toolCallId: "delayed-call",
+            toolCallId: cataloged
+              ? "tool_search_code:delayed-call:silent__delayed_local:1"
+              : "delayed-call",
           });
         }
       } finally {
