@@ -3,6 +3,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { useBunVersionForTest } from "./bun-version.test-support.js";
 
 const execFileSyncMock = vi.hoisted(() => vi.fn());
 const execFileMock = vi.hoisted(() => vi.fn());
@@ -31,8 +32,8 @@ import {
   resolveQaEvidenceEnvironment,
 } from "./evidence-environment.js";
 
+const setBunVersion = useBunVersionForTest();
 afterEach(() => {
-  vi.unstubAllGlobals();
   vi.restoreAllMocks();
   execFileSyncMock.mockReset();
   execFileMock.mockReset();
@@ -108,7 +109,7 @@ describe("captured evidence source identity", () => {
     { label: "Node", bun: undefined, runtime: { id: "node", version: process.version } },
     { label: "simulated Bun", bun: "1.3.14", runtime: { id: "bun", version: "1.3.14" } },
   ])("captures $label independently of available source identity", async ({ bun, runtime }) => {
-    vi.stubGlobal("process", { ...process, versions: { ...process.versions, bun } });
+    setBunVersion(bun);
     execFileMock.mockImplementation((_command, args, _options, callback) =>
       callback(null, args[0] === "rev-parse" ? "actual-head\n" : "", ""),
     );
