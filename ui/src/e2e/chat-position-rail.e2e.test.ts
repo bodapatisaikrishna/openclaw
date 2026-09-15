@@ -721,10 +721,11 @@ suite.define(() => {
           const markerFits = () =>
             runMarker.evaluate((element) => {
               const marker = element.getBoundingClientRect();
-              const viewport = element
-                .closest(".chat-position-rail__marks")!
-                .getBoundingClientRect();
-              return marker.top >= viewport.top && marker.bottom <= Math.ceil(viewport.bottom);
+              const scroller = element.closest(".chat-position-rail__marks")!;
+              const viewport = scroller.getBoundingClientRect();
+              return (
+                marker.top >= viewport.top && marker.bottom <= viewport.top + scroller.clientHeight
+              );
             });
           await expect.poll(markerFits).toBe(false);
           const readerOffset = await thread.evaluate((element) => element.scrollTop);

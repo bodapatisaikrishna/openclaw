@@ -227,17 +227,16 @@ suite.define(() => {
               .poll(() =>
                 markers.nth(index).evaluate((element) => {
                   const marker = element.getBoundingClientRect();
-                  const viewport = element
-                    .closest(".chat-position-rail__marks")!
-                    .getBoundingClientRect();
+                  const scroller = element.closest(".chat-position-rail__marks")!;
+                  const viewport = scroller.getBoundingClientRect();
                   const composerTop = document
                     .querySelector(".agent-chat__composer-shell")!
                     .getBoundingClientRect().top;
                   return (
                     element === document.activeElement &&
                     marker.top >= viewport.top &&
-                    // Scroll ranges round a fractional viewport height to CSS pixels.
-                    marker.bottom <= Math.ceil(viewport.bottom) &&
+                    // Scroll ranges round the local height before adding its fractional page position.
+                    marker.bottom <= viewport.top + scroller.clientHeight &&
                     marker.bottom < composerTop
                   );
                 }),
@@ -284,10 +283,12 @@ suite.define(() => {
               .poll(() =>
                 markers.first().evaluate((element) => {
                   const marker = element.getBoundingClientRect();
-                  const viewport = element
-                    .closest(".chat-position-rail__marks")!
-                    .getBoundingClientRect();
-                  return marker.top >= viewport.top && marker.bottom <= Math.ceil(viewport.bottom);
+                  const scroller = element.closest(".chat-position-rail__marks")!;
+                  const viewport = scroller.getBoundingClientRect();
+                  return (
+                    marker.top >= viewport.top &&
+                    marker.bottom <= viewport.top + scroller.clientHeight
+                  );
                 }),
               )
               .toBe(true);
@@ -307,10 +308,12 @@ suite.define(() => {
               .poll(() =>
                 marks.locator('[aria-current="true"]').evaluate((element) => {
                   const marker = element.getBoundingClientRect();
-                  const viewport = element
-                    .closest(".chat-position-rail__marks")!
-                    .getBoundingClientRect();
-                  return marker.top >= viewport.top && marker.bottom <= Math.ceil(viewport.bottom);
+                  const scroller = element.closest(".chat-position-rail__marks")!;
+                  const viewport = scroller.getBoundingClientRect();
+                  return (
+                    marker.top >= viewport.top &&
+                    marker.bottom <= viewport.top + scroller.clientHeight
+                  );
                 }),
               )
               .toBe(true);
@@ -373,6 +376,7 @@ suite.define(() => {
           element.scrollTop = 0;
         });
         await expect.poll(() => transcript.evaluate((element) => element.scrollTop)).toBe(0);
+        await waitForChatScrollIdle(page);
         const top = (await track.boundingBox())!.y;
         await transcript.evaluate((element) => {
           element.scrollTop = 200;
