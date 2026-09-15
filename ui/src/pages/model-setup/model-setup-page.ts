@@ -19,6 +19,7 @@ import { SubscriptionsController } from "../../lit/subscriptions-controller.ts";
 import {
   captureModelSetupConnection,
   modelSetupAgentSelection,
+  reconcileModelSetupConnection,
   FirstRunSetup,
   type ModelSetupRouteData,
 } from "./first-run-setup.ts";
@@ -247,30 +248,29 @@ export class ModelSetupPage extends OpenClawLightDomElement {
       return;
     }
     const previous = this.observedConnection;
-    const connection = captureModelSetupConnection(
-      this.context,
-      routeData.firstRun,
-      previous?.recoveryScope,
+    const observation = reconcileModelSetupConnection(
+      previous,
+      captureModelSetupConnection(this.context, routeData.firstRun, previous?.recoveryScope),
     );
-    if (
-      previous &&
-      connection.client === previous.client &&
-      connection.hello === previous.hello &&
-      connection.agentId === previous.agentId &&
-      connection.connected === previous.connected &&
-      connection.firstRun === previous.firstRun &&
-      connection.connectionRevision === previous.connectionRevision &&
-      connection.recoveryScope === previous.recoveryScope
-    ) {
+    if (observation.kind === "unchanged") {
       return;
     }
+    const connection = observation.connection;
     this.observedConnection = connection;
+    if (observation.kind === "pending") {
+      if (!this.wizard.hasAdmittedSession) {
+        this.pageState = { phase: "loading" };
+      }
+      this.wizard.suspend();
+      return;
+    }
     const authenticatedOwnerLost =
       previous &&
       (!connection.recoveryScope || connection.recoveryScope !== previous.recoveryScope);
     const ownerChanged =
       previous &&
       (connection.agentId !== previous.agentId ||
+        connection.selectionIntentRevision !== previous.selectionIntentRevision ||
         connection.firstRun !== previous.firstRun ||
         connection.connectionRevision !== previous.connectionRevision ||
         authenticatedOwnerLost);
@@ -647,10 +647,6 @@ export class ModelSetupPage extends OpenClawLightDomElement {
     const gatewayTooOld =
       snapshot.phase === "connected" &&
       isGatewayMethodAdvertised(snapshot, "openclaw.setup.detect") !== true;
-    const canVerify =
-      canAdmin &&
-      !gatewayTooOld &&
-      isGatewayMethodAdvertised(snapshot, "openclaw.setup.verify") === true;
     return renderModelSetup({
       detecting: this.detectionRequest !== null,
       detectionError: this.detectionError,
@@ -672,10 +668,9 @@ export class ModelSetupPage extends OpenClawLightDomElement {
       wizardMode: this.wizardMode,
       wizardValue: this.wizardDraft.value,
       canAdmin,
-      canVerify,
+      canVerify: this.canVerify(snapshot.client),
       canPrepare:
-        canAdmin &&
-        !gatewayTooOld &&
+        this.canUseSetup(snapshot.client) &&
         isGatewayMethodAdvertised(snapshot, "openclaw.setup.prepare.start") === true,
       modelConfigured: readSessionDefaults(snapshot)?.modelConfigured === true,
       gatewayTooOld,

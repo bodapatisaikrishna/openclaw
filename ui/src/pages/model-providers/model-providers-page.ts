@@ -64,6 +64,12 @@ import {
 type DefaultsDraft = DefaultModelSelection & ModelBehaviorConfig;
 
 export class ModelProvidersPage extends OpenClawLightDomElement {
+  private readonly mutationBlockedReason = (): string | null =>
+    modelProviderConfigMutationBlockedReason(this.context) ??
+    (this.selectedAgentId ? null : t("agents.noAgents"));
+  private readonly canMutate = (): boolean =>
+    this.mutationBlockedReason() === null && !this.configBusy();
+
   @consume({ context: applicationContext, subscribe: true })
   private context!: ApplicationContext;
 
@@ -195,6 +201,11 @@ export class ModelProvidersPage extends OpenClawLightDomElement {
       client: this.gateway.client,
       epoch: this.gateway.epoch,
       agentEpoch: this.agentEpoch,
+      agentId: this.context.settingsAgentSelection.state.selectedId,
+      selectionIntentRevision: this.context.settingsAgentSelection.intentRevision,
+      selectionPending:
+        this.context.settingsAgentSelection.state.selectedId === null &&
+        this.context.agents.state.agentsList === null,
     }),
     isCurrent: (owner) =>
       Boolean(
@@ -373,7 +384,6 @@ export class ModelProvidersPage extends OpenClawLightDomElement {
     }
     this.selectedAgentId = agentId;
     this.agentEpoch += 1;
-    this.discovery.reset();
     this.resetAgentScopeState();
     return true;
   }
@@ -403,17 +413,6 @@ export class ModelProvidersPage extends OpenClawLightDomElement {
       return Promise.resolve();
     }
     return this.core.refresh(client, this.selectedAgentId, reason);
-  }
-
-  private mutationBlockedReason(): string | null {
-    return (
-      modelProviderConfigMutationBlockedReason(this.context) ??
-      (this.selectedAgentId ? null : t("agents.noAgents"))
-    );
-  }
-
-  private canMutate(): boolean {
-    return this.mutationBlockedReason() === null && !this.configBusy();
   }
 
   private configBusy(): boolean {

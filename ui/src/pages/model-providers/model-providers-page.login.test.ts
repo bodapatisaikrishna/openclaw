@@ -826,14 +826,18 @@ describe("Models provider login", () => {
 });
 
 it("keeps provider access scoped below global defaults and connects without navigation", async () => {
-  const { context } = createHarness("main");
+  const { context } = createHarness("writer");
   const page = appendPage(context);
   await waitForFast(() => expect(page.data?.updatedAt).toEqual(expect.any(Number)));
   await waitForFast(() =>
     expect(page.querySelector<HTMLButtonElement>("[data-models-connect]")?.disabled).toBe(false),
   );
   const defaults = page.querySelector("#settings-model-behavior")!;
-  const agent = page.querySelector("openclaw-agent-select")!;
+  const agent = page.querySelector("[data-models-provider-agent]")!;
+  expect(page.querySelector("openclaw-agent-select")).toBeNull();
+  expect(agent.textContent?.toLowerCase()).toContain("writer");
+  expect(context.agentSelection.state.selectedId).toBe("main");
+  expect(context.settingsAgentSelection.state.selectedId).toBe("writer");
   expect(defaults.contains(agent)).toBe(false);
   expect(defaults.compareDocumentPosition(agent) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0);
   expect(agent.closest(".settings-section")?.textContent).toContain("Provider access");

@@ -36,7 +36,14 @@ function renderModelProviderDiscovery(props: {
   ></openclaw-model-setup-page>`;
 }
 
-type DiscoveryOwner = { client: GatewayBrowserClient | null; epoch: number; agentEpoch: number };
+type DiscoveryOwner = {
+  client: GatewayBrowserClient | null;
+  epoch: number;
+  agentEpoch: number;
+  agentId: string | null;
+  selectionIntentRevision: number;
+  selectionPending: boolean;
+};
 type DiscoveryOptions = {
   canOpen: () => boolean;
   getOwner: () => DiscoveryOwner;
@@ -49,6 +56,7 @@ type DiscoveryOptions = {
 export class ModelProviderDiscoveryController implements ReactiveController {
   private state: "closed" | "loading" | "ready" = "closed";
   private generation = 0;
+  private owner: DiscoveryOwner | null = null;
 
   constructor(
     private readonly host: ReactiveControllerHost,
@@ -64,7 +72,23 @@ export class ModelProviderDiscoveryController implements ReactiveController {
   reset(): void {
     this.generation += 1;
     this.state = "closed";
+    this.owner = null;
     this.host.requestUpdate();
+  }
+
+  hostUpdated(): void {
+    const owner = this.owner;
+    if (!owner) {
+      return;
+    }
+    const current = this.options.getOwner();
+    if (
+      (this.state === "loading" && !this.options.isCurrent(owner)) ||
+      current.selectionIntentRevision !== owner.selectionIntentRevision ||
+      (!current.selectionPending && current.agentId !== owner.agentId)
+    ) {
+      this.reset();
+    }
   }
 
   cancelLoading(): void {
@@ -90,6 +114,7 @@ export class ModelProviderDiscoveryController implements ReactiveController {
     const generation = this.generation;
     const isCurrent = () =>
       generation === this.generation && this.state === "loading" && this.options.isCurrent(owner);
+    this.owner = owner;
     this.state = "loading";
     this.host.requestUpdate();
     try {
