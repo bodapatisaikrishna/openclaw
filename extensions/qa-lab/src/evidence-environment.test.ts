@@ -31,8 +31,9 @@ import {
   resolveQaEvidenceEnvironment,
 } from "./evidence-environment.js";
 
+const originalVersions = process.versions;
 afterEach(() => {
-  vi.unstubAllGlobals();
+  Object.defineProperty(process, "versions", { value: originalVersions });
   vi.restoreAllMocks();
   execFileSyncMock.mockReset();
   execFileMock.mockReset();
@@ -108,7 +109,7 @@ describe("captured evidence source identity", () => {
     { label: "Node", bun: undefined, runtime: { id: "node", version: process.version } },
     { label: "simulated Bun", bun: "1.3.14", runtime: { id: "bun", version: "1.3.14" } },
   ])("captures $label independently of available source identity", async ({ bun, runtime }) => {
-    vi.stubGlobal("process", { ...process, versions: { ...process.versions, bun } });
+    Object.defineProperty(process, "versions", { value: { ...originalVersions, bun } });
     execFileMock.mockImplementation((_command, args, _options, callback) =>
       callback(null, args[0] === "rev-parse" ? "actual-head\n" : "", ""),
     );
