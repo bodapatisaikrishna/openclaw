@@ -567,17 +567,15 @@ export function stripLegacyBracketToolCallBlocks(text: string): string {
     while (closeMatch && isInsideCode(closeMatch.index, codeRegions)) {
       closeMatch = closeRe.exec(text);
     }
-    const closeStart = closeMatch ? closeMatch.index : -1;
-    const payload = text.slice(payloadStart, closeStart >= 0 ? closeStart : text.length);
-    if (
-      !(isResult
-        ? isLegacyBracketToolResultPayload(payload)
-        : isLegacyBracketToolCallPayload(payload))
-    ) {
+    const payload = text.slice(payloadStart, closeMatch?.index);
+    const isToolPayload = isResult
+      ? isLegacyBracketToolResultPayload(payload)
+      : isLegacyBracketToolCallPayload(payload);
+    if (!isToolPayload) {
       continue;
     }
     result += text.slice(cursor, openStart);
-    cursor = closeStart >= 0 ? closeStart + (closeMatch?.[0].length ?? 0) : text.length;
+    cursor = closeMatch ? closeMatch.index + closeMatch[0].length : text.length;
     if (cursor === text.length) {
       break;
     }
